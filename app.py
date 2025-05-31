@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-# app.py – Streamlit 前端（稳定收藏 + Two-Tower 延迟加载）
+# app.py — Streamlit 前端（收藏夹持久化 + Two-Tower 延迟加载）
 
 from io import BytesIO
 from pathlib import Path
-import random
+import json, random
 
 import pandas as pd
 import streamlit as st
+
 from recommender import (
     load_data, build_feature_matrix, compute_similarity,
     get_top_quality, recommend_by_tags, recommend_hybrid,
@@ -16,6 +17,19 @@ from recommender import (
 DATA_PATH   = Path("data/nintendo_games_enriched.csv")
 INTER_CSV   = Path("data/interactions.csv")
 PLACEHOLDER = "https://raw.githubusercontent.com/streamlit/streamlit/master/examples/data/0.png"
+
+FAV_FILE    = Path("favorites.json")         # ⭐ 持久化收藏夹文件
+
+# ────────────────────────── 收藏夹持久化工具 ──────────────────────────
+def _load_fav_set() -> set[int]:
+    if FAV_FILE.exists():
+        with open(FAV_FILE, "r", encoding="utf-8") as f:
+            return set(json.load(f))
+    return set()
+
+def _save_fav_set(fav_set: set[int]):
+    with open(FAV_FILE, "w", encoding="utf-8") as f:
+        json.dump(sorted(list(fav_set)), f, ensure_ascii=False, indent=2)
 
 # ────────────────────────── 缓存初始化 ──────────────────────────
 @st.cache_data
@@ -28,16 +42,24 @@ def _init_all():
 
 df, sim_df, uid_all = _init_all()
 
+# ────────────────────────── SessionState 初始化 ──────────────────────────
+if "fav_set" not in st.session_state:
+    st.session_state["fav_set"] = _load_fav_set()     # ⭐ 读文件
+
+fav_set: set[int] = st.session_state["fav_set"]       # type hint
+
 # ────────────────────────── 侧栏过滤 ──────────────────────────
 st.sidebar.header("🎛️ 过滤 / 设置")
 genre_sel  = st.sidebar.multiselect("按流派过滤",
                                     sorted(df["genre"].unique()),
                                     default=sorted(df["genre"].unique()))
-min_rating = st.sidebar.slider("最低评分",        0.0, 5.0, 0.0, 0.1)
-min_votes  = st.sidebar.slider("最低评分人数",      0, int(df["ratings_count"].max()), 0, 50)
+min_rating = st.sidebar.slider("最低评分", 0.0, 5.0, 0.0, 0.1)
+min_votes  = st.sidebar.slider("最低评分人数", 0,
+                               int(df["ratings_count"].max()), 0, 50)
 view_mode  = st.sidebar.radio("视图", ("卡片", "表格"))
-top_n      = st.sidebar.slider("展示条数",          5, 40, 12)
+top_n      = st.sidebar.slider("展示条数", 5, 40, 12)
 
+# ────────────────────────── 数据过滤 ──────────────────────────
 df_flt = (
     df[df["genre"].isin(genre_sel)]
     .query("rating >= @min_rating and ratings_count >= @min_votes")
@@ -54,30 +76,29 @@ st.divider()
 
 # ────────────────────────── 渲染辅助 ──────────────────────────
 def _render_cards(df_show: pd.DataFrame, prefix: str):
-    """卡片视图（带收藏按钮，key 加前缀确保唯一）"""
-    fav_set = st.session_state.setdefault("fav_set", set())
+    df_show = df_show.reset_index(drop=True)
+    for _, row in df_show.iterrows():
+        c1, c2 = st.columns([1, 3])
 
-    for _, row in df_show.reset_index(drop=True).iterrows():
-        col_img, col_txt = st.columns([1, 3])
-
-        # —— 封面 —— #
-        img_url = row.get("background_image") or ""
-        if not img_url or pd.isna(img_url) or str(img_url).strip() == "":
-            img_url = PLACEHOLDER
-        with col_img:
-            st.image(img_url, use_container_width=True)
+        # —— 图片 —— #
+        img = row.get("background_image") or ""
+        if not img or pd.isna(img) or str(img).strip() == "":
+            img = PLACEHOLDER
+        with c1:
+            st.image(img, use_container_width=True)
 
         # —— 文本 + 收藏 —— #
-        with col_txt:
+        with c2:
             st.subheader(row["name"])
             st.write(f"⭐ {row['rating']:.2f}　👥 {int(row['ratings_count'])}")
             st.caption(", ".join(row["tags"][:8]))
 
-            btn_key = f"{prefix}_{row['id']}"
+            key = f"{prefix}_{row['id']}"
             if row["id"] in fav_set:
                 st.success("✅ 已收藏")
-            elif st.button("加入收藏", key=btn_key):
+            elif st.button("加入收藏", key=key):
                 fav_set.add(row["id"])
+                _save_fav_set(fav_set)            # ⭐ 保存
                 st.rerun()
 
         st.markdown("---")
@@ -104,7 +125,8 @@ with tab_hot:
 with tab_tag:
     st.subheader("🏷️ 标签推荐")
     q = st.text_input("搜索标签")
-    pool = sorted({t for tags in df_flt["tags"] for t in tags if q.lower() in t.lower()})
+    pool = sorted({t for tags in df_flt["tags"] for t in tags
+                   if q.lower() in t.lower()})
     tag_sel = st.multiselect("选择标签", pool)
     if tag_sel:
         _render(recommend_by_tags(df_flt.copy(), tag_sel, top_n), "tag")
@@ -123,12 +145,13 @@ with tab_tower:
     st.subheader("🧠 Two-Tower 深度召回")
     st.caption("基于训练好的用户/游戏向量的大规模召回 Top-N")
 
-    # —— 延迟导入，避免无 GPU 时本地运行过慢 —— #
+    # —— 延迟导入，避免无 GPU 本地过慢 —— #
     import tower_utils as tw
     uid_all = tw.get_all_user_ids()
 
     demo_uid = st.session_state.get("demo_uid", random.choice(uid_all))
-    uid_sel  = st.selectbox("选择 user_id", uid_all, index=uid_all.index(demo_uid))
+    uid_sel  = st.selectbox("选择 user_id", uid_all,
+                            index=uid_all.index(demo_uid))
 
     if st.button("🔀 随机一个用户"):
         st.session_state["demo_uid"] = random.choice(uid_all)
@@ -143,7 +166,6 @@ with tab_tower:
 
 # ────────────────────────── 收藏夹 ──────────────────────────
 st.sidebar.header("⭐ 我的收藏夹")
-fav_set = st.session_state.get("fav_set", set())
 if fav_set:
     fav_df = (
         df[df["id"].isin(fav_set)]
@@ -156,11 +178,14 @@ if fav_set:
     st.sidebar.dataframe(fav_df, use_container_width=True)
 
     if st.sidebar.button("清空收藏"):
-        st.session_state["fav_set"].clear()
+        fav_set.clear()
+        _save_fav_set(fav_set)                     # ⭐ 保存
         st.rerun()
 
-    buf = BytesIO(); fav_df.to_csv(buf, index=False, encoding="utf-8-sig")
+    buf = BytesIO()
+    fav_df.to_csv(buf, index=False, encoding="utf-8-sig")
     st.sidebar.download_button("下载 CSV", buf.getvalue(),
-                               file_name="my_favorites.csv", mime="text/csv")
+                               file_name="my_favorites.csv",
+                               mime="text/csv")
 else:
     st.sidebar.write("暂无收藏")
