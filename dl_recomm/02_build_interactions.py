@@ -30,11 +30,17 @@ def main():
     model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
     texts = df_game["sinopsis"].fillna("").tolist()
     vecs  = model.encode(texts, show_progress_bar=True, convert_to_numpy=True)
-    # 存一个 dict {game_id: np.ndarray(768,)}
+
+    # 自动检测维度
+    emb_dim = vecs.shape[1]
+    print(f"Detected SentenceTransformer embedding dim = {emb_dim}")
+
+    # 存一个 dict {game_id: np.ndarray(embedding_dim,)}
     emb_dict = {gid: vec for gid, vec in zip(df_game["rawg_id"].astype(int), vecs)}
     with open(EMB_PKL, "wb") as f:
         pickle.dump(emb_dict, f)
-    print(f"✅ 写入 {INTER_CSV}, {EMB_PKL}")
+
+    print(f"✅ 写入 {INTER_CSV}, {EMB_PKL}，embedding_dim={emb_dim}")
 
 if __name__ == "__main__":
     main()

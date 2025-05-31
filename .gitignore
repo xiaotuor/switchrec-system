@@ -1,9 +1,6 @@
 # Ignore data files
-/data/*.csv
-/data/*.pkl
-/data/*.ckpt
-/data/*.json
-
+data/*
+!data/*.csv
 # Python cache
 __pycache__/
 *.pyc
