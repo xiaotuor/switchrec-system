@@ -77,7 +77,7 @@ st.divider()
 # ────────────────────────── 渲染辅助 ──────────────────────────
 def _render_cards(df_show: pd.DataFrame, prefix: str):
     df_show = df_show.reset_index(drop=True)
-    for _, row in df_show.iterrows():
+    for row_idx, row in df_show.iterrows():
         c1, c2 = st.columns([1, 3])
 
         # —— 图片 —— #
@@ -93,10 +93,10 @@ def _render_cards(df_show: pd.DataFrame, prefix: str):
             st.write(f"⭐ {row['rating']:.2f}　👥 {int(row['ratings_count'])}")
             st.caption(", ".join(row["tags"][:8]))
 
-            key = f"{prefix}_{row['id']}"
+            btn_key = f"btn_{prefix}_{row_idx}"
             if row["id"] in fav_set:
                 st.success("✅ 已收藏")
-            elif st.button("加入收藏", key=key):
+            elif st.button("加入收藏", key=btn_key):
                 fav_set.add(row["id"])
                 _save_fav_set(fav_set)            # ⭐ 保存
                 st.rerun()
@@ -138,8 +138,15 @@ with tab_sim:
     game_sel = st.selectbox("选择游戏", df_flt["name"].tolist())
     alpha    = st.slider("Hybrid α", 0.0, 1.0, 0.7, 0.05)
     sim_sub  = sim_df.loc[df_flt.index, df_flt.index]
+
     if st.button("生成推荐", key="btn_sim"):
-        _render(recommend_hybrid(df_flt, sim_sub, game_sel, top_n, alpha), "sim")
+        st.session_state["sim_recs"] = recommend_hybrid(
+            df_flt, sim_sub, game_sel, top_n, alpha
+        )
+
+    # ▶️ 刷新后仍渲染上次结果
+    if "sim_recs" in st.session_state:
+        _render(st.session_state["sim_recs"], "sim")
 
 with tab_tower:
     st.subheader("🧠 Two-Tower 深度召回")
@@ -159,10 +166,14 @@ with tab_tower:
 
     if st.button("深度召回"):
         try:
-            recs = tw.recommend_twotower(df_flt, int(uid_sel), top_n)
-            _render(recs, "tower")
+            st.session_state["tower_recs"] = tw.recommend_twotower(
+                df_flt, int(uid_sel), top_n
+            )
         except ValueError as e:
             st.error(str(e))
+
+    if "tower_recs" in st.session_state:          # ▶️ 刷新后仍显示
+        _render(st.session_state["tower_recs"], "tower")
 
 # ────────────────────────── 收藏夹 ──────────────────────────
 st.sidebar.header("⭐ 我的收藏夹")
