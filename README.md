@@ -1,9 +1,3 @@
-当然！
-下面是一份直接可以 **复制保存为 `README.md`** 的模板，内容和你当前项目结构匹配好，适合你的 `switchrec-system` 仓库：
-
----
-
-### ✅ 完整 `README.md`
 
 ```markdown
 # 🎮 SwitchRec System
@@ -27,8 +21,6 @@
 
 ## 🗂️ 项目结构 Project Structure
 
-```
-
 SwitchRecSystem/
 ├─ app.py                      # Streamlit 前端
 ├─ recommender.py              # 基础推荐逻辑
@@ -45,13 +37,13 @@ SwitchRecSystem/
 ├─ README.md
 └─ .streamlit/config.toml      # Streamlit 配置
 
-````
 
 ---
 
 ## ⚙️ 本地运行 Local Run
 
-```bash
+
+
 # 1️⃣ 克隆仓库
 git clone https://github.com/xiaotuor/switchrec-system.git
 cd switchrec-system
@@ -65,13 +57,12 @@ pip install -r requirements.txt
 
 # 4️⃣ 运行 Streamlit App
 streamlit run app.py
-````
+
 
 ---
 
 ## 🧠 Two-Tower 深度召回训练流程
 
-```bash
 cd dl_recomm
 
 # 1️⃣ 抓取 RAWG 评论
@@ -82,20 +73,7 @@ python 02_build_interactions.py
 
 # 3️⃣ 训练 Two-Tower
 python 03_train_towertower.py
-```
 
----
-
-## 🚀 部署指南
-
-### ▶ Streamlit Cloud 部署步骤
-
-1️⃣ GitHub 仓库 `switchrec-system` ✅
-2️⃣ 添加 `.streamlit/config.toml` ✅
-3️⃣ 配置好 `requirements.txt` ✅
-4️⃣ 登录 [Streamlit Cloud](https://streamlit.io/cloud)
-5️⃣ New App → 选择仓库 → 选择 `app.py` → Deploy
-6️⃣ 部署成功即可获得公开链接 ✅
 
 ---
 
