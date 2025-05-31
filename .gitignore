@@ -1,0 +1,15 @@
+# Ignore data files
+/data/*.csv
+/data/*.pkl
+/data/*.ckpt
+/data/*.json
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Conda environment
+*.conda
+*.env
+*.venv
