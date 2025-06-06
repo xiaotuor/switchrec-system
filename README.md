@@ -55,6 +55,9 @@ pip install -r requirements.txt
 
 # 🔑 运行 Streamlit App
 streamlit run app.py
+
+# 直接查看网站
+https://switchrec-system-x5wqpeeebub73rmj28qzgf.streamlit.app/
 ```
 
 ---
