@@ -17,7 +17,6 @@ def main():
     df_game = pd.read_csv(GAME_CSV)
     df_rev  = pd.read_csv(REVIEW_CSV)
 
-    # -------- 1) 交互表 --------
     inter = (
         df_rev[["user_id", "game_id", "rating"]]
         .drop_duplicates()
@@ -26,16 +25,13 @@ def main():
     inter.to_csv(INTER_CSV, index=False)
     print(f"交互记录数：{len(inter)}")
 
-    # -------- 2) 文本向量 --------
     model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
     texts = df_game["sinopsis"].fillna("").tolist()
     vecs  = model.encode(texts, show_progress_bar=True, convert_to_numpy=True)
 
-    # 自动检测维度
     emb_dim = vecs.shape[1]
     print(f"Detected SentenceTransformer embedding dim = {emb_dim}")
 
-    # 存一个 dict {game_id: np.ndarray(embedding_dim,)}
     emb_dict = {gid: vec for gid, vec in zip(df_game["rawg_id"].astype(int), vecs)}
     with open(EMB_PKL, "wb") as f:
         pickle.dump(emb_dict, f)

@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-拉取 RAWG 玩家评论：
-存字段：game_id, username, rating, text
-“用户名”简单 hash 成 user_id
-"""
 import os, time, json, hashlib
 from pathlib import Path
 import pandas as pd
@@ -42,12 +36,10 @@ def main():
     df_games = pd.read_csv(GAME_CSV)
     game_ids = df_games["rawg_id"].dropna().astype(int).unique()
 
-    # 用 RAWG 全量 dump 提高速度
     RAWG_DUMP = Path("../data/rawg_all_games.csv")
     rawg_df = pd.read_csv(RAWG_DUMP)
     rawg_list = [json.loads(x) for x in rawg_df["json"]]
 
-    # 只保留需要的游戏
     rawg_dict = {g["id"]: g for g in rawg_list}
     all_rows = []
     for gid in tqdm(game_ids, desc="games"):

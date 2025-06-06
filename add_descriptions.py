@@ -12,7 +12,7 @@ from tqdm import tqdm
 from typing import Optional
 
 # ========== 配置 ==========
-RAWG_API_KEY = "YOUR_RAWG_API_KEY"
+RAWG_API_KEY = "7cf966ab5d9e44b29f7c5377c002c88e"
 CACHE_NAME   = "rawg_desc_cache"    # 请求缓存名
 INPUT_CSV    = "data/nintendo_games_enriched.csv"
 OUTPUT_CSV   = "data/nintendo_games_final.csv"

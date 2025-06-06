@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# app.py — Streamlit 前端（收藏夹持久化 + Two-Tower 延迟加载）
-
 from io import BytesIO
 from pathlib import Path
 import json, random
@@ -13,14 +10,12 @@ from recommender import (
     get_top_quality, recommend_by_tags, recommend_hybrid,
 )
 
-# ────────────────────────── 常量 ──────────────────────────
 DATA_PATH   = Path("data/nintendo_games_enriched.csv")
 INTER_CSV   = Path("data/interactions.csv")
 PLACEHOLDER = "https://raw.githubusercontent.com/streamlit/streamlit/master/examples/data/0.png"
 
-FAV_FILE    = Path("favorites.json")         # ⭐ 持久化收藏夹文件
+FAV_FILE    = Path("favorites.json")
 
-# ────────────────────────── 收藏夹持久化工具 ──────────────────────────
 def _load_fav_set() -> set[int]:
     if FAV_FILE.exists():
         with open(FAV_FILE, "r", encoding="utf-8") as f:
@@ -31,7 +26,6 @@ def _save_fav_set(fav_set: set[int]):
     with open(FAV_FILE, "w", encoding="utf-8") as f:
         json.dump(sorted(list(fav_set)), f, ensure_ascii=False, indent=2)
 
-# ────────────────────────── 缓存初始化 ──────────────────────────
 @st.cache_data
 def _init_all():
     df   = load_data(DATA_PATH)
@@ -42,13 +36,11 @@ def _init_all():
 
 df, sim_df, uid_all = _init_all()
 
-# ────────────────────────── SessionState 初始化 ──────────────────────────
 if "fav_set" not in st.session_state:
-    st.session_state["fav_set"] = _load_fav_set()     # ⭐ 读文件
+    st.session_state["fav_set"] = _load_fav_set()
 
-fav_set: set[int] = st.session_state["fav_set"]       # type hint
+fav_set: set[int] = st.session_state["fav_set"]
 
-# ────────────────────────── 侧栏过滤 ──────────────────────────
 st.sidebar.header("🎛️ 过滤 / 设置")
 genre_sel  = st.sidebar.multiselect("按流派过滤",
                                     sorted(df["genre"].unique()),
@@ -59,14 +51,12 @@ min_votes  = st.sidebar.slider("最低评分人数", 0,
 view_mode  = st.sidebar.radio("视图", ("卡片", "表格"))
 top_n      = st.sidebar.slider("展示条数", 5, 40, 12)
 
-# ────────────────────────── 数据过滤 ──────────────────────────
 df_flt = (
     df[df["genre"].isin(genre_sel)]
     .query("rating >= @min_rating and ratings_count >= @min_votes")
     .reset_index(drop=True)
 )
 
-# ────────────────────────── KPI ──────────────────────────
 st.title("🎮 Nintendo Switch 游戏推荐系统")
 c1, c2, c3 = st.columns(3)
 c1.metric("可用游戏数", len(df_flt))
@@ -74,20 +64,17 @@ c2.metric("无标签数量", df_flt["tags"].apply(lambda x: len(x) == 0).sum())
 c3.metric("无评分数量", df_flt["rating"].isna().sum())
 st.divider()
 
-# ────────────────────────── 渲染辅助 ──────────────────────────
 def _render_cards(df_show: pd.DataFrame, prefix: str):
     df_show = df_show.reset_index(drop=True)
     for row_idx, row in df_show.iterrows():
         c1, c2 = st.columns([1, 3])
 
-        # —— 图片 —— #
         img = row.get("background_image") or ""
         if not img or pd.isna(img) or str(img).strip() == "":
             img = PLACEHOLDER
         with c1:
             st.image(img, use_container_width=True)
 
-        # —— 文本 + 收藏 —— #
         with c2:
             st.subheader(row["name"])
             st.write(f"⭐ {row['rating']:.2f}　👥 {int(row['ratings_count'])}")
@@ -98,7 +85,7 @@ def _render_cards(df_show: pd.DataFrame, prefix: str):
                 st.success("✅ 已收藏")
             elif st.button("加入收藏", key=btn_key):
                 fav_set.add(row["id"])
-                _save_fav_set(fav_set)            # ⭐ 保存
+                _save_fav_set(fav_set)
                 st.rerun()
 
         st.markdown("---")
@@ -113,7 +100,6 @@ def _render(df_show: pd.DataFrame, prefix: str):
             use_container_width=True
         )
 
-# ────────────────────────── 页签布局 ──────────────────────────
 tab_hot, tab_tag, tab_sim, tab_tower = st.tabs(
     ["🔥 高质量热门", "🏷️ 标签推荐", "🔍 相似游戏", "🧠 深度召回"]
 )
@@ -144,7 +130,6 @@ with tab_sim:
             df_flt, sim_sub, game_sel, top_n, alpha
         )
 
-    # ▶️ 刷新后仍渲染上次结果
     if "sim_recs" in st.session_state:
         _render(st.session_state["sim_recs"], "sim")
 
@@ -152,7 +137,6 @@ with tab_tower:
     st.subheader("🧠 Two-Tower 深度召回")
     st.caption("基于训练好的用户/游戏向量的大规模召回 Top-N")
 
-    # —— 延迟导入，避免无 GPU 本地过慢 —— #
     import tower_utils as tw
     uid_all = tw.get_all_user_ids()
 
@@ -172,10 +156,9 @@ with tab_tower:
         except ValueError as e:
             st.error(str(e))
 
-    if "tower_recs" in st.session_state:          # ▶️ 刷新后仍显示
+    if "tower_recs" in st.session_state:
         _render(st.session_state["tower_recs"], "tower")
 
-# ────────────────────────── 收藏夹 ──────────────────────────
 st.sidebar.header("⭐ 我的收藏夹")
 if fav_set:
     fav_df = (
@@ -190,7 +173,7 @@ if fav_set:
 
     if st.sidebar.button("清空收藏"):
         fav_set.clear()
-        _save_fav_set(fav_set)                     # ⭐ 保存
+        _save_fav_set(fav_set)
         st.rerun()
 
     buf = BytesIO()

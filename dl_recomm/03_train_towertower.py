@@ -51,7 +51,7 @@ class TwoTower(pl.LightningModule):
         neg_t = txt[torch.randperm(len(txt))]
         pos = self(u, pos_i, txt)
         neg = self(u, neg_i, neg_t)
-        loss = torch.mean(torch.nn.functional.softplus(neg - pos))
+        loss = torch.mean(torch.nn.functional.softplus(neg - pos))# 目标正>负，一种pairwise ranking loss
         self.log("loss", loss, prog_bar=True)
         return loss
 

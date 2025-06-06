@@ -46,7 +46,7 @@ SwitchRecSystem/
 git clone https://github.com/xiaotuor/switchrec-system.git
 cd switchrec-system
 
-# 🔑 (可选) 新建 Conda 虚拟环境
+# 🔑 新建 Conda 虚拟环境
 conda create -n switchrec python=3.9
 conda activate switchrec
 

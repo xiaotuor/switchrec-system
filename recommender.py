@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# recommender.py · 传统内容过滤推荐 (无 torch 依赖)
-
 import ast
 from pathlib import Path
 from typing import List, Union
@@ -11,9 +8,6 @@ from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# ───────────────────────────
-# 1. 读取 & 清洗
-# ───────────────────────────
 def load_data(path: Union[str, Path]) -> pd.DataFrame:
     df = pd.read_csv(path, quotechar='"', keep_default_na=False)
 
@@ -24,9 +18,6 @@ def load_data(path: Union[str, Path]) -> pd.DataFrame:
     df["text"] = df["enriched_sinopsis"] if "enriched_sinopsis" in df.columns else df["sinopsis"]
     return df
 
-# ───────────────────────────
-# 2. 特征工程
-# ───────────────────────────
 def _vec_tags(df):
     mlb = MultiLabelBinarizer()
     return pd.DataFrame(mlb.fit_transform(df["tags"]), columns=mlb.classes_, index=df.index)
@@ -48,9 +39,6 @@ def compute_similarity(feat):
     sim = cosine_similarity(feat.values)
     return pd.DataFrame(sim, index=feat.index, columns=feat.index)
 
-# ───────────────────────────
-# 3. 推荐接口
-# ───────────────────────────
 def get_top_quality(df, n=10):
     q = df["rating"].fillna(0)*np.log1p(df["ratings_count"])
     return df.assign(qscore=q).sort_values("qscore", ascending=False).head(n)
